@@ -1,4 +1,4 @@
-project_root: .
+project_root: /home/iliad/cap-policy/imitation-in-homes
 
 data_root: 
     train: ${env_vars.project_root}/data/extracted

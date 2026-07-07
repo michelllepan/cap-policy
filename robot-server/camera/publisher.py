@@ -46,8 +46,10 @@ class R3DCameraPublisher(ProcessInstantiator):
     # get the RGB and depth images from the Record3D
     def get_rgb_depth_images(self):
         image = None
-        while image is None:
+        while image is None or image.size == 0:
             image, depth, pose = self.app.start_process_image()
+            if image is None or image.size == 0:
+                continue
             image = np.moveaxis(image, [0], [1])[..., ::-1, ::-1]
             image = np.rot90(image, 2)
             image = cv2.resize(image, dsize=(256, 256), interpolation=cv2.INTER_CUBIC)

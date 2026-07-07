@@ -2,8 +2,8 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 K = np.array([
-        [720, 0, 480], 
-        [0, 720, 360], 
+        [694.2733764648438, 0, 479.76861572265625],
+        [0, 694.2733764648438, 356.9676513671875],
         [0, 0, 1]
     ])
 

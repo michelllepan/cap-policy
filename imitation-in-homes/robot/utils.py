@@ -181,8 +181,15 @@ class ImageActionBufferManager:
 
     def img_process(self, img):
         if type(img) is np.ndarray:
+            h, w = img.shape[:2]
+            crop_h, crop_w = int(h * 0.05), int(w * 0.05)
+            cropped = img[crop_h:h - crop_h, crop_w:w - crop_w]
+            cropped = cv2.resize(cropped, (w, h), interpolation=cv2.INTER_CUBIC)
+            if "DISPLAY" in os.environ:
+                cv2.imshow("Policy Input (cropped)", cropped)
+                cv2.waitKey(1)
             # convert cv2 image to PIL image
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img)
         img = self.to_tensor(img)
         return img

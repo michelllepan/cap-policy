@@ -299,11 +299,14 @@ class Controller:
     def _get_clicked_point(self, cv2_img, np_depth):
         self.clicked_point = None  # Reset before each image
 
+        h, w = cv2_img.shape[:2]
+        cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Image", w, h)
         cv2.imshow("Image", cv2_img)
         cv2.setMouseCallback("Image", self.click_event)
-        
+
         while self.clicked_point is None:
-            key = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(15) & 0xFF
             if key == 27:  # ESC key
                 break
         

@@ -1,5 +1,7 @@
 from enum import Enum
+import json
 import logging
+import re
 import time
 from typing import Dict
 import signal
@@ -77,6 +79,7 @@ class Controller:
         self.use_pose = cfg["use_pose"]
         self.goal_dim = cfg["goal_dim"]
         self.use_goals = cfg["goal_dim"] > 0
+        self.use_vlm = cfg.get("use_vlm", False)
 
         network_cfg: Dict = cfg["network"]
         self.robot = RPCClient(network_cfg.get("remote"), network_cfg["action_port"])
@@ -299,21 +302,71 @@ class Controller:
     def _get_clicked_point(self, cv2_img, np_depth):
         self.clicked_point = None  # Reset before each image
 
-        h, w = cv2_img.shape[:2]
-        cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Image", w, h)
-        cv2.imshow("Image", cv2_img)
-        cv2.setMouseCallback("Image", self.click_event)
+        logger.info(f"Acquiring contact point via {'VLM' if self.use_vlm else 'click popup'} (use_vlm={self.use_vlm})")
+        if self.use_vlm:
+            self.object_name = input("Enter the name of the object to interact with: ").strip()
+            self.clicked_point = self._query_vlm_contact_point(cv2_img)
+        else:
+            h, w = cv2_img.shape[:2]
+            cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("Image", w, h)
+            cv2.imshow("Image", cv2_img)
+            cv2.setMouseCallback("Image", self.click_event)
 
-        while self.clicked_point is None:
-            key = cv2.waitKey(15) & 0xFF
-            if key == 27:  # ESC key
-                break
-        
-        cv2.destroyWindow("Image")
+            while self.clicked_point is None:
+                key = cv2.waitKey(15) & 0xFF
+                if key == 27:  # ESC key
+                    break
+
+            cv2.destroyWindow("Image")
 
         self.object_x, self.object_y, self.object_depth = self._point2d_to_3d(self.clicked_point, np_depth)
         print(f"Object depth: {self.object_depth}")
+
+    def _query_vlm_contact_point(self, cv2_img):
+        """Ask Gemini ER to localize a contact point on the task-relevant object.
+
+        Returns the point in the same [x, y] pixel coordinate space that
+        click_event/_point2d_to_3d expect from a user click.
+        """
+        from google import genai
+        from google.genai import types
+
+        if not hasattr(self, "_vlm_client"):
+            self._vlm_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+        h, w = cv2_img.shape[:2]
+        ok, encoded = cv2.imencode(".png", cv2_img)
+        if not ok:
+            raise RuntimeError("Failed to encode image for VLM query")
+
+        prompt = (
+            f"You are controlling a robot performing a '{self.task}' task on "
+            f"the object '{self.object_name}'. "
+            "Point to the single best contact point on that object for the "
+            "robot gripper to grasp or interact with. "
+            'Respond with only JSON in the form [{"point": [y, x], "label": "..."}] '
+            "where y and x are normalized to the range 0-1000."
+        )
+
+        response = self._vlm_client.models.generate_content(
+            model="gemini-robotics-er-1.6-preview",
+            contents=[
+                types.Part.from_bytes(data=encoded.tobytes(), mime_type="image/png"),
+                prompt,
+            ],
+        )
+
+        match = re.search(r"\[.*\]", response.text, re.DOTALL)
+        if match is None:
+            raise ValueError(f"Could not parse VLM response: {response.text}")
+        points = json.loads(match.group(0))
+        y_norm, x_norm = points[0]["point"]
+
+        x = int(x_norm / 1000 * w)
+        y = int(y_norm / 1000 * h)
+        print(f"VLM contact point: ({x}, {y})")
+        return [x, y]
     
     def _point2d_to_3d(self, p2d, np_depth):
         x, y = p2d[0] / 256, p2d[1] / 256

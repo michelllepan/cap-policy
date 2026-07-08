@@ -3,6 +3,7 @@ from typing import Tuple
 import cv2
 import hydra
 import torch
+from dotenv import load_dotenv
 from omegaconf import OmegaConf
 from torch import nn
 from torch.utils.data import DataLoader
@@ -10,6 +11,11 @@ import os
 import sys
 
 from utils.trajectory_vis import visualize_trajectory
+
+# Load before hydra changes the working directory, so a .env next to this
+# script (or an ancestor directory) is always found regardless of hydra's
+# job.chdir behavior.
+load_dotenv()
 
 DEFAULT_TASK_CHECKPOINTS = {
     "open": "checkpoints/open.pt",
@@ -311,5 +317,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and any(arg in ['-h', '--help', 'help'] for arg in sys.argv):
         print_help()
         sys.exit(0)
-    
+
     main()

@@ -22,12 +22,23 @@ class StartServer(ProcessInstantiator):
         component = hydra.utils.instantiate(configs)
         component.stream()
 
-    #Function to start camera process
+    #Function to start camera process(es). A camera config is either a single
+    #component (top-level _target_, e.g. iphone.yaml) or a mapping of several
+    #named components (e.g. cameras.yaml's camera1/camera3), each of which
+    #gets its own process.
     def _init_camera_process(self):
-        self.processes.append(Process(
-            target = self._start_component,
-            args = (self.configs.camera, )
-        ))
+        camera_cfg = self.configs.camera
+        if "_target_" in camera_cfg:
+            self.processes.append(Process(
+                target = self._start_component,
+                args = (camera_cfg, )
+            ))
+        else:
+            for _, sub_cfg in camera_cfg.items():
+                self.processes.append(Process(
+                    target = self._start_component,
+                    args = (sub_cfg, )
+                ))
 
     def _init_robot_process(self):
         self.processes.append(Process(

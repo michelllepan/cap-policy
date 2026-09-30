@@ -72,7 +72,23 @@ class D435ImagePublisher:
             depth_size=D435I_DEPTH_SIZE,
             fps=D435I_FPS,
         )
-    
+
+        active_profile = self.pipeline_d435i.get_active_profile()
+        depth_profile = active_profile.get_stream(rs.stream.depth).as_video_stream_profile()
+        intr = depth_profile.get_intrinsics()
+        # Intrinsics of the native (pre-rotation) depth stream. Consumers that
+        # back-project pixels from the rotated image published below must
+        # account for the rotation themselves.
+        self.intrinsics = np.array(
+            [intr.fx, intr.fy, intr.ppx, intr.ppy, intr.width, intr.height]
+        )
+
+        # Raw z16 depth values are in units of the device's own depth scale
+        # (meters per count), which is NOT a fixed constant across units/
+        # presets -- query it rather than assuming a value.
+        self.depth_scale = active_profile.get_device().first_depth_sensor().get_depth_scale()
+        print(f"D435i depth scale: {self.depth_scale} meters/count")
+
     def get_head_image_and_depth(self):
         frames_d435i = self.pipeline_d435i.wait_for_frames()
         color_frame_d435i = frames_d435i.get_color_frame()
@@ -91,19 +107,26 @@ class D435ImagePublisher:
 
             if self.use_depth:
                 depth = np.ascontiguousarray(depth).astype(np.uint16)
-                resized_depth = cv2.resize(depth, D435I_DEPTH_SIZE,  interpolation = cv2.INTER_NEAREST) 
-                depth_processed = (resized_depth * 0.0001).astype(np.float32)
+                resized_depth = cv2.resize(depth, D435I_DEPTH_SIZE,  interpolation = cv2.INTER_NEAREST)
+                # Match image's rotation so color and depth stay pixel-aligned.
+                resized_depth = np.rot90(resized_depth, k=-1)
+                depth_processed = (resized_depth * self.depth_scale).astype(np.float32)
 
                 if "DISPLAY" in os.environ:
                     cv2.imshow("D435i Depth pre", resized_depth)
                     cv2.imshow("D435i", image)
-                
+
                 self.rgb_publisher.pub_image_and_depth(image, depth_processed, time.time())
             else:
                 if "DISPLAY" in os.environ:
                     cv2.imshow("D435i", image)
-                
+
                 self.rgb_publisher.pub_rgb_image(image, time.time())
+
+            # Republish periodically (not just once) since PUB/SUB won't
+            # replay this to a subscriber that connects after the fact.
+            if self._seq % 30 == 0:
+                self.rgb_publisher.pub_intrinsics(self.intrinsics)
 
             self._seq += 1
 

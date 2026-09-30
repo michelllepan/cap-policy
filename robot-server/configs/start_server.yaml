@@ -8,6 +8,7 @@ defaults:
 
 stream_depth: true
 stream_pose: true
+use_depth: true
 robot_cfg:
   stretch_gripper_tight: -25
   sticky_gripper: false

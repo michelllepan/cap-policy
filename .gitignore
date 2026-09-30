@@ -182,3 +182,5 @@ imitation-in-homes/real2sim/static
 imitation-in-homes/static
 *.pt
 imitation-in-homes/real2sim/logs
+
+*.claude

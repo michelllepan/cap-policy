@@ -304,7 +304,8 @@ class Controller:
 
         logger.info(f"Acquiring contact point via {'VLM' if self.use_vlm else 'click popup'} (use_vlm={self.use_vlm})")
         if self.use_vlm:
-            self.object_name = input("Enter the name of the object to interact with: ").strip()
+            if self.object_name is None:
+                self.object_name = input("Enter the name of the object to interact with: ").strip()
             self.clicked_point = self._query_vlm_contact_point(cv2_img)
         else:
             h, w = cv2_img.shape[:2]

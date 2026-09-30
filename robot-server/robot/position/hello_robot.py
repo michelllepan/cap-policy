@@ -272,6 +272,13 @@ class HelloRobot:
             self.arm_chain, self.fk_p_kdl, self.ik_v_kdl
         )
 
+        # Head (D435i) camera chain: shares the base's joint_fake translation,
+        # then head_pan/head_tilt, down to the depth optical frame.
+        self.camera_joint_list = ["joint_fake", "joint_head_pan", "joint_head_tilt"]
+        self.camera_chain = kdl_tree.getChain("base_link", "camera_depth_optical_frame")
+        self.camera_joint_array = PyKDL.JntArray(self.camera_chain.getNrOfJoints())
+        self.fk_camera_kdl = PyKDL.ChainFkSolverPos_recursive(self.camera_chain)
+
     def updateJoints(self, override=True):
         # Update the joint state values in 'self.joints' using hellorobot api calls
         # print('x, y:', self.robot.base.status['x'], self.robot.base.status['y'])
@@ -440,6 +447,23 @@ class HelloRobot:
     
     def remember_pose(self):
         self.prev_pose = self.get_pose(serialize=False, override=False)
+
+    def get_camera_pose(self, serialize=True):
+        """
+        Pose of the head D435i's depth optical frame in base_link coordinates,
+        accounting for the current base translation and head pan/tilt.
+        """
+        self.updateJoints()
+        self.camera_joint_array[0] = self.joints["joint_fake"]
+        self.camera_joint_array[1] = self.robot.head.status["head_pan"]["pos"]
+        self.camera_joint_array[2] = self.robot.head.status["head_tilt"]["pos"]
+
+        camera_pose = PyKDL.Frame()
+        self.fk_camera_kdl.JntToCart(self.camera_joint_array, camera_pose)
+        if serialize:
+            return self._serialize_frame(camera_pose)
+        else:
+            return camera_pose
     
     def _serialize_frame(self, frame):
         q = frame.M.GetQuaternion()

@@ -194,11 +194,49 @@ class HelloRobot:
         print("self.GRIPPER_THRESHOLD_POST_GRASP_LIST", self.GRIPPER_THRESHOLD_POST_GRASP_LIST)
         self._params_changed = True
 
+    def look_at_gripper(self):
+        """
+        Pan the head 90 degrees to the right and tilt it down so it's
+        looking at the gripper/tool. This runs on the head's own Dynamixel
+        chain, independent of push_command(), so it can move concurrently
+        with other joints.
+        """
+        self.robot.head.pose("tool")
+
+    def center_head(self):
+        """
+        Pan/tilt the head back to 'ahead' (0, 0). Only for manually testing
+        that look_at_gripper() produces real physical motion, by giving a
+        different pose to swing away from and back to.
+        """
+        self.robot.head.pose("ahead")
+
+    def head_diagnostics(self):
+        """
+        Read-only status for the head's two Dynamixel joints, to debug why
+        look_at_gripper()/move_to might be silently refusing to move
+        (stretch_body's move_to() logs a warning and returns early -- it
+        does not raise -- when hw_valid is False, is_calibrated is False
+        while required, or was_runstopped is True).
+        """
+        diag = {"runstop_event": self.robot.pimu.status.get("runstop_event")}
+        for joint in ("head_pan", "head_tilt"):
+            motor = self.robot.head.get_motor(joint)
+            diag[joint] = {
+                "hw_valid": motor.hw_valid,
+                "is_calibrated": motor.is_calibrated,
+                "was_runstopped": motor.was_runstopped,
+                "req_calibration": motor.params["req_calibration"],
+                "pos": self.robot.head.status[joint]["pos"],
+            }
+        return diag
+
     def home(self, gripper=1.0, reset_base=False):
         self.not_grasped = True
         self._has_gripped = False
 
         self.robot.push_command()
+        self.look_at_gripper()
 
         self.threshold_count = 0
         if gripper == 1.0:

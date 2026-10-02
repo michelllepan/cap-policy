@@ -2,7 +2,6 @@ from camera.demo import R3DApp
 import cv2
 import time
 from robot.zmq_utils import *
-import os
 from scipy.spatial.transform import Rotation as R
     
 class R3DCameraPublisher(ProcessInstantiator):
@@ -104,13 +103,3 @@ class R3DCameraPublisher(ProcessInstantiator):
                     self.pose_publisher.pub_keypoints(pose, "pose")
 
                 self.timer.end_loop()
-
-                if "DISPLAY" in os.environ:
-                    cv2.imshow("iPhone", wrist_image)
-                    if self.stream_depth:
-                        cv2.imshow("Depth", wrist_depth)
-            
-                if cv2.waitKey(1) == 27:
-                    break
-        
-        cv2.destroyAllWindows()

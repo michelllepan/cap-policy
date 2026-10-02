@@ -84,7 +84,7 @@ def print_help():
     print()
     print("4. Robot Parameters:")
     print("   robot_params.h=<float>         Base height parameter from starting point")
-    print("                                  Default: 0.6 (run.yaml), 0.0 (run_vqbet.yaml)")
+    print("                                  Default: 0.6 (run.yaml), 0.85 (run_vqbet.yaml)")
     print("   robot_params.max_h=<float>     Maximum height deviation from base height")
     print("                                  Default: 0.06 (run.yaml), 0.10 (run_vqbet.yaml)")
     print("   robot_params.max_base=<float>  Maximum base movement from starting point")

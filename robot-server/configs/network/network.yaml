@@ -7,4 +7,6 @@ head_camera_port: 32924
 action_port: 8081
 flag_port: 2828
 pose_port: 32932
+viewer_port: 7860
+wide_camera_device: /dev/video6
 xarm_ip: 192.168.86.216

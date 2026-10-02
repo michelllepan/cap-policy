@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import time
 import pyrealsense2 as rs
-import os
 
 from std_msgs.msg import Float32MultiArray, MultiArrayDimension, Int32
 from robot.zmq_utils import ZMQCameraPublisher, ProcessInstantiator
@@ -112,15 +111,8 @@ class D435ImagePublisher:
                 resized_depth = np.rot90(resized_depth, k=-1)
                 depth_processed = (resized_depth * self.depth_scale).astype(np.float32)
 
-                if "DISPLAY" in os.environ:
-                    cv2.imshow("D435i Depth pre", resized_depth)
-                    cv2.imshow("D435i", image)
-
                 self.rgb_publisher.pub_image_and_depth(image, depth_processed, time.time())
             else:
-                if "DISPLAY" in os.environ:
-                    cv2.imshow("D435i", image)
-
                 self.rgb_publisher.pub_rgb_image(image, time.time())
 
             # Republish periodically (not just once) since PUB/SUB won't

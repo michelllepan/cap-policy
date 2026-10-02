@@ -27,7 +27,7 @@ stream_depth: True
 use_pose: True
 
 robot_params:
-  h: 0.6
+  h: 0.85
   max_h: 0.06
   max_base: 0.08
   abs_gripper: True

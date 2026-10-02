@@ -351,7 +351,7 @@ class Controller:
         )
 
         response = self._vlm_client.models.generate_content(
-            model="gemini-robotics-er-1.6-preview",
+            model="gemini-robotics-er-2-preview",
             contents=[
                 types.Part.from_bytes(data=encoded.tobytes(), mime_type="image/png"),
                 prompt,
@@ -474,7 +474,12 @@ class Controller:
                 gripper = gripper if gripper > self.closing_threshold else 0.0
             else:
                 gripper = 1.0 if gripper > self.closing_threshold else 0.0
-            
+
+            # Keep the live grasp state visible to callers (e.g. pick.py's
+            # success check) and to the GRIPPER_FROM_CAMERA goal-conditioning
+            # switch above, which also reads self.gripper.
+            self.gripper = gripper
+
             logger.info("calling move_to_pose")
             self.robot.move_to_pose(action_robot[:3], action_robot[3:6], gripper, prev_pose=True)
 
